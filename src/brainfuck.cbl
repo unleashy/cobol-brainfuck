@@ -111,6 +111,10 @@ bf-rbracket.
 
         perform until brainfuck-counter <= 0
 
+            if brainfuck-iptr > source-len
+                perform unbalanced-brackets
+            end-if
+
             evaluate brainfuck-code(brainfuck-iptr)
                 when '[' add      1 to   brainfuck-counter
                 when ']' subtract 1 from brainfuck-counter
@@ -127,6 +131,10 @@ bf-lbracket.
         set brainfuck-iptr down by 1
 
         perform until brainfuck-counter <= 0
+
+            if brainfuck-iptr < 0
+                perform unbalanced-brackets
+            end-if
 
             evaluate brainfuck-code(brainfuck-iptr)
                 when ']' add      1 to   brainfuck-counter
