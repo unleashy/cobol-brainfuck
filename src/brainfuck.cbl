@@ -37,8 +37,8 @@ declaratives.
 file-error section.
 use after standard error procedure on Source-File.
     evaluate file-status
-        when 35    display "cannot find file " trim(file-arg, trailing)
-        when other display "error with file (" file-status ")"
+        when 35    display "cannot find file " trim(file-arg, trailing) upon stderr
+        when other display "error with file (" file-status ")" upon stderr
     end-evaluate.
 
     goback.
@@ -48,7 +48,7 @@ main section.
 main-procedure.
     display 1 upon argument-number.
     accept file-arg from argument-value
-        on exception perform no-such-file.
+        on exception perform no-such-arg.
 
     perform bf-read.
     perform bf-run.
@@ -137,8 +137,8 @@ bf-lbracket.
         add 1 to brainfuck-iptr
     end-if.
 
-no-such-file.
-    display "cannot find file " trim(file-arg, trailing).
+no-such-arg.
+    display "missing 'filename' argument" upon stderr.
     stop run returning 1.
 
 end program brainfuck.
