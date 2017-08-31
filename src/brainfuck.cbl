@@ -5,7 +5,7 @@ program-id. brainfuck.
 environment division.
 configuration section.
 repository.
-    function char trim intrinsic.
+    function char trim ord intrinsic.
 
 input-output section.
 file-control.
@@ -23,13 +23,13 @@ working-storage section.
     01 file-arg        pic X(255) value is space.
     01 file-status     pic 99.
     01 source-len      pic 999 value is zero.
-    01 brainfuck-code  pic X occurs 0 to 16384 times depending on source-len.
     01 brainfuck.
-       02 brainfuck-instr    pic X.
-       02 brainfuck-tape     occurs 30000 times usage is binary-char unsigned.
-       02 brainfuck-iptr     usage is index value is 1.
-       02 brainfuck-dptr     usage is index value is 1.
-       02 brainfuck-counter  usage is binary-int.
+        02 brainfuck-instr    pic X.
+        02 brainfuck-tape     occurs 30000 times usage is binary-char unsigned.
+        02 brainfuck-iptr     usage is index value is 1.
+        02 brainfuck-dptr     usage is index value is 1.
+        02 brainfuck-counter  usage is binary-int.
+        02 brainfuck-code     pic X occurs 0 to 16384 times depending on source-len.
 
 procedure division.
 declaratives.
@@ -103,7 +103,7 @@ bf-run.
 
 bf-input.
     accept tmp-input.
-    move tmp-input to brainfuck-tape(brainfuck-dptr).
+    move ord(tmp-input) to brainfuck-tape(brainfuck-dptr).
 
 bf-rbracket.
     if brainfuck-tape(brainfuck-dptr) is zero
