@@ -24,12 +24,12 @@ working-storage section.
     01 file-status     pic 99.
     01 source-len      pic 999 value is zero.
     01 brainfuck.
-        02 brainfuck-instr    pic X.
-        02 brainfuck-tape     occurs 30000 times usage is binary-char unsigned.
-        02 brainfuck-iptr     usage is index value is 1.
-        02 brainfuck-dptr     usage is index value is 1.
         02 brainfuck-counter  usage is binary-int.
-        02 brainfuck-code     pic X occurs 0 to 16384 times depending on source-len.
+        02 brainfuck-tape     usage is binary-char unsigned
+                              occurs 30000 times indexed by brainfuck-dptr.
+        02 brainfuck-code     pic X
+                              occurs 0 to 16384 times depending on source-len
+                              indexed by brainfuck-iptr.
 
 procedure division.
 declaratives.
@@ -75,23 +75,21 @@ bf-read.
             when ']'
                 add 1 to source-len
                 move fs-instruction to brainfuck-code(brainfuck-iptr)
-                add 1 to brainfuck-iptr
+                set brainfuck-iptr up by 1
         end-evaluate
     end-perform.
 
     close Source-File.
 
 bf-run.
-    move 1 to brainfuck-iptr.
+    set brainfuck-iptr to 1.
 
-    perform varying brainfuck-iptr from brainfuck-iptr by 1
-            until brainfuck-iptr > source-len
-
+    perform until brainfuck-iptr > source-len
         move 1 to brainfuck-counter
 
         evaluate brainfuck-code(brainfuck-iptr)
-            when '>' add      1 to   brainfuck-dptr
-            when '<' subtract 1 from brainfuck-dptr
+            when '>' set brainfuck-dptr up   by 1
+            when '<' set brainfuck-dptr down by 1
             when '+' add      1 to   brainfuck-tape(brainfuck-dptr)
             when '-' subtract 1 from brainfuck-tape(brainfuck-dptr)
             when '.' display char(brainfuck-tape(brainfuck-dptr) + 1) with no advancing
@@ -99,6 +97,8 @@ bf-run.
             when '[' perform bf-rbracket
             when ']' perform bf-lbracket
         end-evaluate
+
+        set brainfuck-iptr up by 1
     end-perform.
 
 bf-input.
@@ -107,35 +107,41 @@ bf-input.
 
 bf-rbracket.
     if brainfuck-tape(brainfuck-dptr) is zero
-        add 1 to brainfuck-iptr
+        set brainfuck-iptr up by 1
 
-        perform varying brainfuck-iptr from brainfuck-iptr by 1
-                until brainfuck-counter <= 0
+        perform until brainfuck-counter <= 0
 
             evaluate brainfuck-code(brainfuck-iptr)
                 when '[' add      1 to   brainfuck-counter
                 when ']' subtract 1 from brainfuck-counter
             end-evaluate
+
+            set brainfuck-iptr up by 1
         end-perform
 
-        subtract 1 from brainfuck-iptr
+        set brainfuck-iptr down by 1
     end-if.
 
 bf-lbracket.
     if brainfuck-tape(brainfuck-dptr) is not zero
-        subtract 1 from brainfuck-iptr
+        set brainfuck-iptr down by 1
 
-        perform varying brainfuck-iptr from brainfuck-iptr by -1
-                until brainfuck-counter <= 0
+        perform until brainfuck-counter <= 0
 
             evaluate brainfuck-code(brainfuck-iptr)
                 when ']' add      1 to   brainfuck-counter
                 when '[' subtract 1 from brainfuck-counter
             end-evaluate
+
+            set brainfuck-iptr down by 1
         end-perform
 
-        add 1 to brainfuck-iptr
+        set brainfuck-iptr up by 1
     end-if.
+
+unbalanced-brackets.
+    display "unbalanced brackets." upon stderr.
+    stop run returning 1.
 
 no-such-arg.
     display "missing 'filename' argument" upon stderr.
