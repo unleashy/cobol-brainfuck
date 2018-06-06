@@ -28,9 +28,11 @@ working-storage section.
         02 brainfuck-tape         usage is binary-char unsigned
                                   occurs 30000 times indexed by brainfuck-dptr.
         02 brainfuck-hoisted-iptr usage is index.
+        02 brainfuck-last-instr   pic X.
         02 brainfuck-code         occurs 0 to 16384 times depending on source-len
                                   indexed by brainfuck-iptr.
             03 brainfuck-code-instr  pic X.
+            03 brainfuck-code-value  usage is binary-int.
             03 brainfuck-code-offset usage is index.
 
 procedure division.
@@ -71,12 +73,26 @@ bf-read.
             when '<'
             when '+'
             when '-'
+                add 1 to source-len
+
+                *> Aggregate sequential +, -, <, and >s onto
+                *> brainfuck-code-value.
+                if brainfuck-last-instr equals fs-instruction
+                    add 1 to brainfuck-code-value(brainfuck-iptr - 1)
+                else
+                    move fs-instruction to brainfuck-code-instr(brainfuck-iptr)
+                    move fs-instruction to brainfuck-last-instr
+                    move 1 to brainfuck-code-value(brainfuck-iptr)
+                    set brainfuck-iptr up by 1
+                end-if
+
             when '.'
             when ','
             when '['
             when ']'
                 add 1 to source-len
                 move fs-instruction to brainfuck-code-instr(brainfuck-iptr)
+                move fs-instruction to brainfuck-last-instr
                 set brainfuck-iptr up by 1
 
         end-evaluate
@@ -89,10 +105,10 @@ bf-run.
 
     perform until brainfuck-iptr > source-len
         evaluate brainfuck-code-instr(brainfuck-iptr)
-            when '>' set brainfuck-dptr up   by 1
-            when '<' set brainfuck-dptr down by 1
-            when '+' add      1 to   brainfuck-tape(brainfuck-dptr)
-            when '-' subtract 1 from brainfuck-tape(brainfuck-dptr)
+            when '>' set brainfuck-dptr up   by brainfuck-code-value(brainfuck-iptr)
+            when '<' set brainfuck-dptr down by brainfuck-code-value(brainfuck-iptr)
+            when '+' add      brainfuck-code-value(brainfuck-iptr) to   brainfuck-tape(brainfuck-dptr)
+            when '-' subtract brainfuck-code-value(brainfuck-iptr) from brainfuck-tape(brainfuck-dptr)
             when '.' display char(brainfuck-tape(brainfuck-dptr) + 1) with no advancing
             when ',' perform bf-input
             when '[' perform bf-rbracket
