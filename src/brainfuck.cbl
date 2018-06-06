@@ -24,12 +24,14 @@ working-storage section.
     01 file-status     pic 99.
     01 source-len      pic 999 value is zero.
     01 brainfuck.
-        02 brainfuck-counter  usage is binary-int.
-        02 brainfuck-tape     usage is binary-char unsigned
-                              occurs 30000 times indexed by brainfuck-dptr.
-        02 brainfuck-code     pic X
-                              occurs 0 to 16384 times depending on source-len
-                              indexed by brainfuck-iptr.
+        02 brainfuck-counter      usage is binary-int.
+        02 brainfuck-tape         usage is binary-char unsigned
+                                  occurs 30000 times indexed by brainfuck-dptr.
+        02 brainfuck-hoisted-iptr usage is index.
+        02 brainfuck-code         occurs 0 to 16384 times depending on source-len
+                                  indexed by brainfuck-iptr.
+            03 brainfuck-code-instr  pic X.
+            03 brainfuck-code-offset usage is index.
 
 procedure division.
 declaratives.
@@ -74,8 +76,9 @@ bf-read.
             when '['
             when ']'
                 add 1 to source-len
-                move fs-instruction to brainfuck-code(brainfuck-iptr)
+                move fs-instruction to brainfuck-code-instr(brainfuck-iptr)
                 set brainfuck-iptr up by 1
+
         end-evaluate
     end-perform.
 
@@ -85,9 +88,7 @@ bf-run.
     set brainfuck-iptr to 1.
 
     perform until brainfuck-iptr > source-len
-        move 1 to brainfuck-counter
-
-        evaluate brainfuck-code(brainfuck-iptr)
+        evaluate brainfuck-code-instr(brainfuck-iptr)
             when '>' set brainfuck-dptr up   by 1
             when '<' set brainfuck-dptr down by 1
             when '+' add      1 to   brainfuck-tape(brainfuck-dptr)
@@ -107,44 +108,62 @@ bf-input.
 
 bf-rbracket.
     if brainfuck-tape(brainfuck-dptr) is zero
-        set brainfuck-iptr up by 1
+        if brainfuck-code-offset(brainfuck-iptr) is not zero
+            *> We have a cached offset!
+            move brainfuck-code-offset(brainfuck-iptr) to brainfuck-iptr
+        else
+            *> Hoist the current iptr so we can cache the offset later.
+            move brainfuck-iptr to brainfuck-hoisted-iptr
 
-        perform until brainfuck-counter <= 0
+            move 1 to brainfuck-counter
+            perform until brainfuck-counter <= 0
+                set brainfuck-iptr up by 1
 
-            if brainfuck-iptr > source-len
-                perform unbalanced-brackets
-            end-if
+                if brainfuck-iptr > source-len
+                    perform unbalanced-brackets
+                end-if
 
-            evaluate brainfuck-code(brainfuck-iptr)
-                when '[' add      1 to   brainfuck-counter
-                when ']' subtract 1 from brainfuck-counter
-            end-evaluate
+                evaluate brainfuck-code-instr(brainfuck-iptr)
+                    when '[' add      1 to   brainfuck-counter
+                    when ']' subtract 1 from brainfuck-counter
+                end-evaluate
+            end-perform
 
-            set brainfuck-iptr up by 1
-        end-perform
-
-        set brainfuck-iptr down by 1
+            *> Cache the offset so we don't have to find it again. Additionally,
+            *> cache both ends -- lbracket and rbracket.
+            move brainfuck-iptr to brainfuck-code-offset(brainfuck-hoisted-iptr)
+            move brainfuck-hoisted-iptr to brainfuck-code-offset(brainfuck-iptr)
+        end-if
     end-if.
 
 bf-lbracket.
     if brainfuck-tape(brainfuck-dptr) is not zero
-        set brainfuck-iptr down by 1
+        if brainfuck-code-offset(brainfuck-iptr) is not zero
+            *> We have a cached offset!
+            move brainfuck-code-offset(brainfuck-iptr) to brainfuck-iptr
+        else
+            *> Hoist the current iptr so we can cache the offset later.
+            move brainfuck-iptr to brainfuck-hoisted-iptr
 
-        perform until brainfuck-counter <= 0
+            move 1 to brainfuck-counter
+            perform until brainfuck-counter <= 0
+                set brainfuck-iptr down by 1
 
-            if brainfuck-iptr < 0
-                perform unbalanced-brackets
-            end-if
+                if brainfuck-iptr <= 0
+                    perform unbalanced-brackets
+                end-if
 
-            evaluate brainfuck-code(brainfuck-iptr)
-                when ']' add      1 to   brainfuck-counter
-                when '[' subtract 1 from brainfuck-counter
-            end-evaluate
+                evaluate brainfuck-code-instr(brainfuck-iptr)
+                    when ']' add      1 to   brainfuck-counter
+                    when '[' subtract 1 from brainfuck-counter
+                end-evaluate
+            end-perform
 
-            set brainfuck-iptr down by 1
-        end-perform
-
-        set brainfuck-iptr up by 1
+            *> Cache the offset so we don't have to find it again. Additionally,
+            *> cache both ends -- lbracket and rbracket.
+            move brainfuck-iptr to brainfuck-code-offset(brainfuck-hoisted-iptr)
+            move brainfuck-hoisted-iptr to brainfuck-code-offset(brainfuck-iptr)
+        end-if
     end-if.
 
 unbalanced-brackets.
